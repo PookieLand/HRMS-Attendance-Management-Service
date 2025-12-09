@@ -1,18 +1,24 @@
 FROM python:3.13-alpine3.22 AS builder
 
-# Install build dependencies only in builder stage
+# Install build dependencies for mysqlclient and confluent-kafka (librdkafka) in builder stage
 RUN apk add --no-cache \
     pkgconfig \
     gcc \
     musl-dev \
     mariadb-dev \
-    mariadb-connector-c-dev
+    mariadb-connector-c-dev \
+    curl \
+    gnupg \
+    librdkafka-dev
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Copy the application into the container
 COPY . /app
+WORKDIR /app
+
+# Setup the working directory
 WORKDIR /app
 
 # Install the application dependencies using uv sync
@@ -67,9 +73,8 @@ USER appuser
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD /app/.venv/bin/python -c "import httpx; r = httpx.get('http://localhost:8000/health'); exit(0 if r.status_code == 200 else 1)" || exit 1
 
 # Run the application
 CMD ["/app/.venv/bin/fastapi", "run", "app/main.py", "--port", "8000", "--host", "0.0.0.0"]
-

@@ -1,3 +1,11 @@
+"""
+Configuration settings for Attendance Management Service.
+
+Loads configuration from environment variables with sensible defaults.
+Includes settings for database, Redis caching, Kafka messaging,
+and external service integrations.
+"""
+
 from typing import List
 
 from pydantic_settings import BaseSettings
@@ -6,7 +14,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = "Attendance Management Service"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
     # Database Settings
@@ -16,6 +24,17 @@ class Settings(BaseSettings):
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_CHARSET: str = "utf8"
+
+    # Redis Settings
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: str = ""
+    REDIS_DB: int = 0
+    CACHE_TTL: int = 300  # Default cache TTL in seconds (5 minutes)
+
+    # Kafka Settings
+    KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
+    KAFKA_ENABLED: bool = True
 
     # CORS Settings
     CORS_ORIGINS: str = "https://localhost,http://localhost:3000"
@@ -32,6 +51,13 @@ class Settings(BaseSettings):
 
     # External Services
     EMPLOYEE_SERVICE_URL: str = "http://localhost:8000"
+    EMPLOYEE_SERVICE_TIMEOUT: int = 5
+
+    LEAVE_SERVICE_URL: str = "http://localhost:8003"
+    LEAVE_SERVICE_TIMEOUT: int = 5
+
+    USER_SERVICE_URL: str = "http://localhost:8001"
+    USER_SERVICE_TIMEOUT: int = 5
 
     # Asgardeo OAuth2 Settings
     ASGARDEO_ORG: str = ""  # REQUIRED: Must be set in .env file
@@ -66,9 +92,18 @@ class Settings(BaseSettings):
         """Generate MySQL URL without database name (for initial connection)."""
         return f"mysql+mysqldb://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}?charset={self.DB_CHARSET}"
 
+    # Attendance Business Rules
+    STANDARD_WORK_HOURS: float = 8.0
+    STANDARD_START_TIME: str = "09:00"
+    STANDARD_END_TIME: str = "17:00"
+    LATE_THRESHOLD_MINUTES: int = 15  # Minutes after start time to be considered late
+    OVERTIME_THRESHOLD_HOURS: float = 8.0  # Hours after which overtime starts
+    SHORT_LEAVE_THRESHOLD_HOURS: float = 4.0  # Less than this is considered short leave
+
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 # Create global settings instance

@@ -7,7 +7,8 @@ from sqlmodel import select
 from app.api.clients.employee_service import employee_service
 from app.api.dependencies import CurrentUserDep, SessionDep
 from app.core.events import (
-    AttendanceMarkedEvent,
+    AttendanceCheckinEvent,
+    AttendanceCheckoutEvent,
     AttendanceUpdatedEvent,
     EventEnvelope,
     EventMetadata,
