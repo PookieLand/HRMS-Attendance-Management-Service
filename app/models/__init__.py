@@ -13,18 +13,12 @@ from app.models.attendance import (
     MonthlySummary,
 )
 from app.models.employee import (
-    Employee,
-    EmployeeBase,
-    EmployeeCreate,
+    EmployeeCache,
     EmployeePublic,
-    EmployeeUpdate,
 )
 
 __all__ = [
-    "Employee",
-    "EmployeeBase",
-    "EmployeeCreate",
-    "EmployeeUpdate",
+    "EmployeeCache",
     "EmployeePublic",
     "Attendance",
     "CheckInRequest",

@@ -3,16 +3,17 @@ Database configuration and session management.
 Handles database engine creation, session management, and table initialization.
 """
 
-from sqlmodel import Session, SQLModel, create_engine
-from sqlalchemy import text
 from typing import Generator
+
+from sqlalchemy import text
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.attendance import Attendance  # noqa: F401
 
 # Import all models to ensure they are registered with SQLModel
-from app.models.employee import Employee  # noqa: F401
-from app.models.attendance import Attendance  # noqa: F401
+from app.models.employee import EmployeeCache  # noqa: F401
 
 logger = get_logger(__name__)
 

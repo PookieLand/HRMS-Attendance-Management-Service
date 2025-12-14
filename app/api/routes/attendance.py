@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import select
 
-from app.api.clients.employee_service import employee_service
 from app.api.dependencies import CurrentUserDep, SessionDep
+from app.core.employee_service import employee_validation_service
 from app.core.events import (
     AttendanceCheckinEvent,
     AttendanceCheckoutEvent,
@@ -70,7 +70,9 @@ async def check_in(
     if not is_hr_or_manager:
         # Regular employees can only check in themselves
         # Verify the employee_id matches the current user's employee record
-        employee_data = await employee_service.get_employee(request.employee_id)
+        employee_data = await employee_validation_service.get_employee(
+            request.employee_id
+        )
         if not employee_data:
             raise HTTPException(
                 status_code=400,
@@ -90,8 +92,10 @@ async def check_in(
     logger.info(
         f"Check-in initiated by {current_user.email} for employee {request.employee_id}"
     )
-    # Verify employee exists in employee service
-    employee_exists = await employee_service.verify_employee_exists(request.employee_id)
+    # Verify employee exists using cache-first approach
+    employee_exists = await employee_validation_service.verify_employee_exists_async(
+        request.employee_id
+    )
     if not employee_exists:
         logger.warning(
             f"Check-in attempted for non-existent employee {request.employee_id}"
@@ -219,7 +223,9 @@ async def check_out(
 
     if not is_hr_or_manager:
         # Regular employees can only check out themselves
-        employee_data = await employee_service.get_employee(request.employee_id)
+        employee_data = await employee_validation_service.get_employee(
+            request.employee_id
+        )
         if not employee_data:
             raise HTTPException(
                 status_code=400,
@@ -228,7 +234,7 @@ async def check_out(
 
         if employee_data.get("email") != current_user.email:
             logger.warning(
-                f"User {current_user.email} attempted to check out for another employee {request.employee_id}"
+                f"User {current_user.email} attempted to check out another employee {request.employee_id}"
             )
             raise HTTPException(
                 status_code=403,
@@ -238,8 +244,10 @@ async def check_out(
     logger.info(
         f"Check-out initiated by {current_user.email} for employee {request.employee_id}"
     )
-    # Verify employee exists in employee service
-    employee_exists = await employee_service.verify_employee_exists(request.employee_id)
+    # Verify employee exists using cache-first approach
+    employee_exists = await employee_validation_service.verify_employee_exists_async(
+        request.employee_id
+    )
     if not employee_exists:
         logger.warning(
             f"Check-out attempted for non-existent employee {request.employee_id}"
@@ -369,7 +377,7 @@ async def get_employee_attendance(
 
     if not is_hr_or_manager:
         # Regular employees can only view their own attendance
-        employee_data = await employee_service.get_employee(employee_id)
+        employee_data = await employee_validation_service.get_employee(employee_id)
         if not employee_data:
             raise HTTPException(
                 status_code=404,
@@ -453,7 +461,7 @@ async def get_monthly_summary(
 
     if not is_hr_or_manager:
         # Regular employees can only view their own summary
-        employee_data = await employee_service.get_employee(employee_id)
+        employee_data = await employee_validation_service.get_employee(employee_id)
         if not employee_data:
             raise HTTPException(
                 status_code=404,
@@ -551,7 +559,9 @@ async def check_in_self(
     logger.info(f"Self check-in initiated by {current_user.email}")
 
     # Look up employee by current user's email
-    employee_data = await employee_service.get_employee_by_email(current_user.email)
+    employee_data = await employee_validation_service.get_employee_by_email(
+        current_user.email
+    )
     if not employee_data:
         raise HTTPException(
             status_code=404,
@@ -669,7 +679,9 @@ async def check_out_self(
     logger.info(f"Self check-out initiated by {current_user.email}")
 
     # Look up employee by current user's email
-    employee_data = await employee_service.get_employee_by_email(current_user.email)
+    employee_data = await employee_validation_service.get_employee_by_email(
+        current_user.email
+    )
     if not employee_data:
         raise HTTPException(
             status_code=404,
@@ -745,7 +757,9 @@ async def get_my_attendance_today(
     """
     # Get employee_id from current user's email
     # We need to find the employee by email
-    employee_data = await employee_service.get_employee_by_email(current_user.email)
+    employee_data = await employee_validation_service.get_employee_by_email(
+        current_user.email
+    )
     if not employee_data:
         raise HTTPException(
             status_code=404,
@@ -793,7 +807,9 @@ async def get_my_attendance_history(
         List of attendance records for the current user
     """
     # Get employee_id from current user's email
-    employee_data = await employee_service.get_employee_by_email(current_user.email)
+    employee_data = await employee_validation_service.get_employee_by_email(
+        current_user.email
+    )
     if not employee_data:
         raise HTTPException(
             status_code=404,
@@ -880,9 +896,10 @@ async def get_attendance_dashboard(
     pending_count = sum(1 for r in records if r.status == "pending")
 
     # Get employees who haven't checked in yet
-    # (This would require getting total employee count from employee service)
-    employees_list = await employee_service.get_employees_list(limit=1000)
-    total_employees = len(employees_list) if employees_list else 0
+    # Get active employee count from cache
+    from app.core.employee_service import employee_validation_service as emp_service
+
+    total_employees = emp_service.get_active_employee_count()
     not_checked_in = total_employees - total_employees_checked_in
 
     logger.info(

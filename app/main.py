@@ -18,6 +18,7 @@ from app.api.routes.attendance import router as attendance_router
 from app.core.cache import RedisClient
 from app.core.config import settings
 from app.core.database import create_db_and_tables
+from app.core.handlers import register_employee_handlers
 from app.core.kafka import KafkaConsumer, KafkaProducer
 from app.core.logging import get_logger
 from app.models.attendance import Attendance
@@ -51,6 +52,11 @@ async def lifespan(_: FastAPI):
     logger.info("Initializing Kafka producer...")
     await KafkaProducer.start()
     logger.info("Kafka producer initialized")
+
+    # Register Kafka event handlers
+    logger.info("Registering employee event handlers...")
+    register_employee_handlers()
+    logger.info("Employee event handlers registered")
 
     # Start Kafka consumer if there are handlers registered
     logger.info("Starting Kafka consumer...")
