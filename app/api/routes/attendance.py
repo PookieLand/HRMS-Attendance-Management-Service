@@ -64,7 +64,14 @@ async def check_in(
     # HR-Administrators, HR-Managers, and Team-Managers can check in anyone
     is_hr_or_manager = any(
         role in current_user.groups
-        for role in ["HR-Administrators", "HR-Managers", "Team-Managers"]
+        for role in [
+            "HR-Administrators",
+            "HR_Administrators",
+            "HR-Managers",
+            "HR_Managers",
+            "Managers",
+            "manager",
+        ]
     )
 
     if not is_hr_or_manager:
@@ -218,7 +225,15 @@ async def check_out(
     # RBAC: Employees can only check out themselves
     is_hr_or_manager = any(
         role in current_user.groups
-        for role in ["HR-Administrators", "HR-Managers", "Team-Managers"]
+        for role in [
+            "HR-Administrators",
+            "HR-Managers",
+            "Team-Managers",
+            "HR_Administrators",
+            "HR_Managers",
+            "Manager",
+            "manager",
+        ]
     )
 
     if not is_hr_or_manager:
@@ -310,7 +325,16 @@ def get_attendance(
     session: SessionDep,
     current_user: Annotated[
         TokenData,
-        Depends(require_role("HR-Administrators", "HR-Managers", "Team-Managers")),
+        Depends(
+            require_role(
+                "HR-Administrators",
+                "HR-Managers",
+                "Team-Managers",
+                "HR_Administrators",
+                "HR_ManagersManager",
+                "manager",
+            )
+        ),
     ],
 ) -> Attendance:
     """
@@ -372,7 +396,15 @@ async def get_employee_attendance(
     # RBAC: Employees can only view their own records
     is_hr_or_manager = any(
         role in current_user.groups
-        for role in ["HR-Administrators", "HR-Managers", "Team-Managers"]
+        for role in [
+            "HR-Administrators",
+            "HR-Managers",
+            "Team-Managers",
+            "HR_Administrators",
+            "HR_Managers",
+            "Manager",
+            "manager",
+        ]
     )
 
     if not is_hr_or_manager:
@@ -456,7 +488,15 @@ async def get_monthly_summary(
     # RBAC: Employees can only view their own summary
     is_hr_or_manager = any(
         role in current_user.groups
-        for role in ["HR-Administrators", "HR-Managers", "Team-Managers"]
+        for role in [
+            "HR-Administrators",
+            "HR-Managers",
+            "Team-Managers",
+            "HR_Administrators",
+            "HR_Managers",
+            "Manager",
+            "manager",
+        ]
     )
 
     if not is_hr_or_manager:
@@ -855,7 +895,17 @@ async def get_attendance_dashboard(
     session: SessionDep,
     current_user: Annotated[
         TokenData,
-        Depends(require_role("HR-Administrators", "HR-Managers", "Team-Managers")),
+        Depends(
+            require_role(
+                "HR-Administrators",
+                "HR-Managers",
+                "Team-Managers",
+                "HR_Administrators",
+                "HR_Managers",
+                "Manager",
+                "manager",
+            )
+        ),
     ],
     date: str | None = None,
 ):
