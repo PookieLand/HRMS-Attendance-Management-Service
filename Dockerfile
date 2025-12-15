@@ -1,15 +1,17 @@
-FROM python:3.13-alpine3.22 AS builder
+FROM python:3.13-slim AS builder
 
-# Install build dependencies for mysqlclient and confluent-kafka (librdkafka) in builder stage
-RUN apk add --no-cache \
-    pkgconfig \
+# Install build dependencies for mysqlclient and confluent-kafka
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-libmysqlclient-dev \
+    pkg-config \
     gcc \
-    musl-dev \
-    mariadb-dev \
-    mariadb-connector-c-dev \
     curl \
     gnupg \
-    librdkafka-dev
+    && curl -fsSL https://packages.confluent.io/deb/7.9/archive.key | gpg --dearmor -o /usr/share/keyrings/confluent-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/confluent-archive-keyring.gpg] https://packages.confluent.io/deb/7.9 stable main" > /etc/apt/sources.list.d/confluent.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends librdkafka-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -18,8 +20,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 COPY . /app
 WORKDIR /app
 
-# Setup the working directory
-WORKDIR /app
+# Set environment variables for librdkafka
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH \
+    PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH
 
 # Install the application dependencies using uv sync
 RUN uv sync --frozen
@@ -45,17 +48,22 @@ RUN find /app/.venv/lib/python3.13/site-packages -type f \( -name "*.md" -o -nam
 RUN rm -rf /app/.venv/lib/python3.13/site-packages/pip /app/.venv/lib/python3.13/site-packages/setuptools /app/.venv/lib/python3.13/site-packages/wheel 2>/dev/null || true
 
 # Runtime stage
-FROM python:3.13-alpine3.22
+FROM python:3.13-slim
 
 # Install only runtime dependencies (not build tools)
-RUN apk add --no-cache \
-    mariadb-connector-c \
-    libstdc++ \
-    ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmariadb3 \
+    libssl3 \
+    librdkafka1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN addgroup -g 10001 appgroup && \
-    adduser -u 10001 -G appgroup -s /sbin/nologin -D appuser
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -s /sbin/nologin -d /nonexistent appuser
+
+# Set environment variables for librdkafka
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
 # Copy virtual environment from builder
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
