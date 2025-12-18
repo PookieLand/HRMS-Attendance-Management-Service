@@ -107,7 +107,7 @@ app.add_middleware(
 
 
 # Include routers
-app.include_router(attendance_router, prefix="/api/v1")
+app.include_router(attendance_router, prefix="/api/v1/attendance")
 
 
 # Health check endpoint
